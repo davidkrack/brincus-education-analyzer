@@ -1,0 +1,98 @@
+/* Estilos generales */
+body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    margin: 0;
+    padding: 20px;
+}
+
+/* Header */
+header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 20px;
+    border-bottom: 2px solid #2c3e50;
+}
+
+.logo {
+    max-width: 200px;
+    margin-bottom: 20px;
+}
+
+/* Contenido */
+.analisis-pregunta {
+    margin-bottom: 40px;
+    padding: 20px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background-color: #fff;
+}
+
+.seccion-curso {
+    background-color: #2c3e50;
+    color: white;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+}
+
+/* Evaluación */
+.scores {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.score-item {
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.barra-progreso {
+    background-color: #e9ecef;
+    border-radius: 4px;
+    height: 20px;
+    margin-top: 5px;
+}
+
+.progreso {
+    background-color: #3498db;
+    height: 100%;
+    border-radius: 4px;
+    color: white;
+    text-align: center;
+    font-size: 12px;
+    line-height: 20px;
+}
+
+/* Mejoras */
+.justificacion-mejorada {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
+.ejemplos {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+.ejemplos li {
+    margin-bottom: 10px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+}
+
+/* Footer */
+footer {
+    text-align: center;
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid #e0e0e0;
+    color: #666;
+}

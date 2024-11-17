@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Análisis de Contenido Educativo - Brincus</title>
+</head>
+<body>
+    <header>
+        <img src="C:\Users\narut\Downloads\Brincus work\brincus-education-analysis\templates\logo_home.png" alt="Brincus Logo" class="logo">
+        <h1>Reporte de Análisis Educativo</h1>
+        <p class="fecha">Generado el: {{ fecha_generacion }}</p>
+    </header>
+
+    <div class="resumen">
+        <h2>Resumen del Análisis</h2>
+        <p>Total de preguntas analizadas: {{ total_preguntas }}</p>
+    </div>
+
+    {% for analysis in analyses %}
+    <div class="analisis-pregunta">
+        <div class="seccion-curso">
+            <h3>{{ analysis.curso }}</h3>
+        </div>
+
+        <div class="contenido-original">
+            <h4>Pregunta Original</h4>
+            <p>{{ analysis.pregunta_original }}</p>
+            
+            <h4>Justificación Original</h4>
+            <p>{{ analysis.justificacion_original }}</p>
+        </div>
+
+        <div class="evaluacion">
+            <h4>Evaluación</h4>
+            <div class="scores">
+                {% for criterio, valor in analysis.evaluacion.items() %}
+                <div class="score-item">
+                    <span class="criterio">{{ criterio|capitalize }}</span>
+                    <div class="barra-progreso">
+                        <div class="progreso" style="width: {{ valor * 10 }}%">
+                            {{ valor }}/10
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="mejoras">
+            <h4>Sugerencias de Mejora</h4>
+            <p>{{ analysis.sugerencias }}</p>
+
+            <h4>Justificación Mejorada</h4>
+            <div class="justificacion-mejorada">
+                {{ analysis.justificacion_mejorada }}
+            </div>
+
+            <h4>Ejemplos Relevantes</h4>
+            <ul class="ejemplos">
+                {% for ejemplo in analysis.ejemplos_relevantes %}
+                <li>{{ ejemplo }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endfor %}
+
+    <footer>
+        <p>© Brincus Education {{ fecha_generacion.split('-')[2][:4] }}</p>
+    </footer>
+</body>
+</html>
