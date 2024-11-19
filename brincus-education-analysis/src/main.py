@@ -2,12 +2,12 @@ import os
 import pandas as pd
 import numpy as np
 from src.analyzers.grok_analyzer import GrokEducationAnalyzer
-from src.analyzers.pdf_generator import PDFReportGenerator
+from src.analyzers.pdf_generator import PDFGenerator
 from src.utils.data_cleaner import DataCleaner
 from src.config.settings import OUTPUT_DIR, DATA_DIR
 from dotenv import load_dotenv
 
-def select_diverse_sample(df: pd.DataFrame, total_samples: int = 10, math_samples: int = 3) -> pd.DataFrame:
+def select_diverse_sample(df: pd.DataFrame, total_samples: int = 15, math_samples: int = 6) -> pd.DataFrame:
     """
     Selecciona una muestra diversa de preguntas asegurando un mínimo de preguntas de matemáticas
     """
@@ -49,11 +49,11 @@ def main():
         df_clean = cleaner.clean_dataframe(df)
         
         # Seleccionar muestra diversa (10 preguntas, al menos 3 de matemáticas)
-        sample_df = select_diverse_sample(df_clean, total_samples=10, math_samples=3)
+        sample_df = select_diverse_sample(df_clean, total_samples=15, math_samples=6)
         
         # Crear instancias
         analyzer = GrokEducationAnalyzer()
-        pdf_generator = PDFReportGenerator()
+        pdf_generator = PDFGenerator()
         
         # Procesar batch de preguntas
         results = analyzer.process_batch(sample_df)
@@ -61,7 +61,10 @@ def main():
         # Guardar resultados CSV
         csv_path = os.path.join(OUTPUT_DIR, 'grok_education_analysis.csv')
         results.to_csv(csv_path, index=False)
-        
+        print("\nRevisión de resultados:")
+        for _, row in results.iterrows():
+            print("\nID:", row.get('id'))
+            print("Contenido del análisis:", row.get('analisis_grok', 'No disponible'))
         # Generar PDF
         pdf_path = os.path.join(OUTPUT_DIR, 'analisis_educativo.pdf')
         pdf_generator.generate_report(results, pdf_path)
