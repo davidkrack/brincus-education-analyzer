@@ -19,7 +19,7 @@ SYSTEM_PROMPT = """Eres un profesor experto en educación con años de experienc
 5. Conectar con experiencias previas
 6. Adaptar lenguaje a la edad del estudiante
 7. Crear explicaciones memorables y significativas
-8. Todas las respuestas que tengan que ver con matematicas siempre dar el resultado paso por paso.
+8. Todas las respuestas que tengan que ver con matemáticas siempre dar el resultado paso por paso.
 
 Al mejorar justificaciones:
 - Explicación robusta y completa
@@ -27,9 +27,22 @@ Al mejorar justificaciones:
 - Contexto adicional necesario
 - Tono motivador y positivo
 
-Responde SOLO en este formato JSON sin marcadores de código:
+Al mejorar las preguntas:
+- Explicación completa y objetiva sobre el concepto que se pregunta sin que pierda el sentido de la pregunta original
+- Las alternativas deben ser lo más coherentes posible con la pregunta
+- Mantener el nivel de dificultad apropiado
+
+Responde SIEMPRE en este formato JSON exacto:
 {
-    "pregunta_original": "texto",
+    "pregunta_mejorada": "texto de la pregunta mejorada",
+    "alternativas": {
+        "A": "alternativa a mejorada",
+        "B": "alternativa b mejorada",
+        "C": "alternativa c mejorada",
+        "D": "alternativa d mejorada"
+    },
+    "respuesta_correcta": "letra de la respuesta correcta",
+    "justificacion_mejorada": "explicación pedagógica detallada",
     "evaluacion": {
         "claridad": 0-10,
         "ejemplos": 0-10,
@@ -37,14 +50,15 @@ Responde SOLO en este formato JSON sin marcadores de código:
         "lenguaje": 0-10,
         "relacion": 0-10
     },
-    "sugerencias": "texto",
-    "justificacion_mejorada": "texto con explicación paso a paso",
-    "ejemplos_relevantes": ["ejemplo 1", "ejemplo 2"]
+    "ejemplos": [
+        "ejemplo específico 1",
+        "ejemplo específico 2"
+    ]
 }"""
 
 # Configuraciones de la aplicación
 OUTPUT_DIR = os.getenv('OUTPUT_DIR', './output')
-BATCH_SIZE = int(os.getenv('BATCH_SIZE', '10'))
+BATCH_SIZE = int(os.getenv('BATCH_SIZE', '15'))
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
 
 # Asegurar que existe el directorio de salida

@@ -1,184 +1,183 @@
-import os
-from datetime import datetime
-from typing import Dict, List
-import json
-import re
+
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.units import inch
-from reportlab.lib.enums import TA_LEFT, TA_CENTER
+from svglib.svglib import svg2rlg
+from reportlab.graphics import renderPDF
+import json
+import os
 
-class PDFReportGenerator:
+class PDFGenerator:
     def __init__(self):
         self.styles = getSampleStyleSheet()
         self._create_custom_styles()
-        self.logo_path = os.path.join('templates', 'logo_home.png')
-        
+        self.logo_path = os.path.join('templates', 'logo_home.svg')
+
     def _create_custom_styles(self):
-        """Crea estilos personalizados para el documento"""
-        # Estilo para títulos
         self.styles.add(ParagraphStyle(
             name='CustomTitle',
             parent=self.styles['Heading1'],
             fontSize=24,
             spaceAfter=30,
-            alignment=TA_CENTER
+            alignment=1
         ))
         
-        # Estilo para subtítulos
         self.styles.add(ParagraphStyle(
-            name='SubTitle',
+            name='SectionTitle',
             parent=self.styles['Heading2'],
-            fontSize=16,
+            fontSize=14,
             textColor=colors.HexColor('#2c3e50'),
-            spaceBefore=20,
-            spaceAfter=10
-        ))
-        
-        # Estilo para texto normal mejorado
-        self.styles.add(ParagraphStyle(
-            name='CustomNormal',
-            parent=self.styles['Normal'],
-            fontSize=12,
-            leading=16,
-            spaceBefore=6,
-            spaceAfter=6
-        ))
-        
-        # Estilo para texto en negrita
-        self.styles.add(ParagraphStyle(
-            name='Bold',
-            parent=self.styles['Normal'],
-            fontSize=12,
-            leading=16,
+            spaceBefore=15,
+            spaceAfter=10,
             bold=True
         ))
-
-    def _format_text(self, text: str) -> str:
-        """Formatea el texto para manejar negritas y símbolos especiales"""
-        # Reemplazar ** con etiquetas de negrita
-        text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
         
-        # Reemplazar símbolos matemáticos
-        text = text.replace('×', 'x')  # Multiplicación
-        text = text.replace('²', '<sup>2</sup>')  # Exponente 2
-        
+        self.styles.add(ParagraphStyle(
+            name='Content',
+            parent=self.styles['Normal'],
+            fontSize=11,
+            leading=14,
+            spaceAfter=8
+        ))
+    def _clean_formula(self, text):
+        """Limpia fórmulas matemáticas del formato JSON"""
+        if isinstance(text, str):
+            if '"ops"' in text and '"formula"' in text:
+                try:
+                    data = json.loads(text)
+                    formula = data['ops'][0]['insert'].get('formula', '')
+                    return formula or text
+                except:
+                    pass
         return text
+    def _format_question_block(self, pregunta, alternativas, respuesta, justificacion):
+        """Formatea un bloque de pregunta con formato estandarizado y alternativas verticales"""
+        # Limpiar la pregunta
+        pregunta = self._clean_formula(pregunta)
+        
+        # Construir el bloque con formato específico y alternativas verticales
+        texto = pregunta.strip() + "<br/><br/>"  # Doble salto de línea después de la pregunta
+        
+        # Formatear alternativas con alineación vertical
+        for letra, alt in [('a', 'A'), ('b', 'B'), ('c', 'C'), ('d', 'D'), ('e', 'E')]:
+            if alt in alternativas:
+                alt_text = self._clean_formula(alternativas[alt])
+                texto += f"{letra}){alt_text.strip()}<br/>"  # Salto de línea después de cada alternativa
+        
+        texto += "<br/>"  # Línea en blanco antes de la respuesta
+        texto += f"Respuesta: {respuesta}<br/>"
+        
+        # Limpiar justificación
+        justificacion = justificacion.replace('&La', 'La')
+        justificacion = justificacion.replace('||', '')
+        justificacion = justificacion.strip()
+        texto += f"Justificación: {justificacion}"
+        
+        return texto
+
+
+    def create_comparison_section(self, content: dict) -> list:
+        elements = []
+        
+        # Título del curso
+        elements.append(Paragraph(f"Curso: {content['curso']}", self.styles['SectionTitle']))
+        elements.append(Spacer(1, 12))
+        
+        try:
+            # Pregunta Original
+            elements.append(Paragraph("Pregunta Original:", self.styles['SectionTitle']))
+            original_text = self._format_question_block(
+                content['pregunta_original'],
+                content['alternativas_original'],
+                content.get('correcta', ''),
+                content['justificacion_original']
+            )
+            elements.append(Paragraph(original_text, self.styles['Content']))
+            elements.append(Spacer(1, 20))
+            
+            # Pregunta Mejorada
+            analysis = self._clean_json_string(content['analisis_grok'])
+            if analysis:
+                elements.append(Paragraph("Pregunta Mejorada:", self.styles['SectionTitle']))
+                improved_text = self._format_question_block(
+                    analysis['pregunta_mejorada'],
+                    analysis['alternativas'],
+                    analysis['respuesta_correcta'],
+                    analysis['justificacion_mejorada']
+                )
+                elements.append(Paragraph(improved_text, self.styles['Content']))
+                
+                if analysis.get('ejemplos'):
+                    elements.append(Paragraph("Ejemplos Relevantes:", self.styles['SectionTitle']))
+                    for i, ejemplo in enumerate(analysis['ejemplos'], 1):
+                        elements.append(Paragraph(f"{i}. {ejemplo}", self.styles['Content']))
+        
+        except Exception as e:
+            print(f"Error procesando pregunta: {str(e)}")
+        
+        elements.append(Spacer(1, 30))
+        return elements
+
+    def _clean_json_string(self, json_str):
+        """Limpia el string JSON de caracteres no deseados"""
+        if isinstance(json_str, str):
+            json_str = json_str.replace('```json\n', '').replace('\n```', '').strip()
+            try:
+                return json.loads(json_str)
+            except:
+                return None
+        return json_str
 
     def generate_report(self, results_df, output_path: str):
-        """Genera el reporte PDF con los análisis"""
+        class HeaderCanvas:
+            def __init__(self, pdf_generator):
+                self.pdf_generator = pdf_generator
+
+            def on_page(self, canvas, doc):
+                # Dibujar el logo en el encabezado
+                if os.path.exists(self.pdf_generator.logo_path):
+                    canvas.saveState()
+                    # Convertir SVG a objeto ReportLab Graphics
+                    drawing = svg2rlg(self.pdf_generator.logo_path)
+                    
+                    # Calcular escala
+                    original_width = drawing.width
+                    desired_width = 2*inch
+                    scale_factor = desired_width / original_width
+                    
+                    # Escalar el dibujo SVG
+                    drawing.scale(scale_factor, scale_factor)
+                    
+                    # Dibujar logo
+                    renderPDF.draw(drawing, canvas, 
+                                doc.leftMargin, 
+                                doc.pagesize[1] - doc.topMargin + 1.5*inch - drawing.height)
+                    canvas.restoreState()
+
+        # Configurar documento
         doc = SimpleDocTemplate(
             output_path,
             pagesize=letter,
             rightMargin=72,
             leftMargin=72,
-            topMargin=72,
+            topMargin=72 + 0.6*inch,
             bottomMargin=72
         )
 
         elements = []
-        
-        # Agregar logo
-        if os.path.exists(self.logo_path):
-            img = Image(self.logo_path, width=2*inch, height=1*inch)
-            elements.append(img)
-            elements.append(Spacer(1, 20))
-
-        # Título
-        elements.append(Paragraph(
-            "Reporte de Análisis Educativo",
-            self.styles['CustomTitle']
-        ))
-        
-        # Fecha
-        elements.append(Paragraph(
-            f"Generado el: {datetime.now().strftime('%d-%m-%Y %H:%M')}",
-            self.styles['CustomNormal']
-        ))
+        elements.append(Spacer(1, 0.2*inch))
+        elements.append(Paragraph("Análisis de Contenido Educativo", self.styles['CustomTitle']))
         elements.append(Spacer(1, 20))
-
-        for _, row in results_df.iterrows():
-            elements.extend(self._create_question_section(row))
-            elements.append(Spacer(1, 30))
-
-        # Construir PDF
-        doc.build(elements)
-
-    def _create_question_section(self, row) -> List:
-        elements = []
         
-        try:
-            analysis = json.loads(row['analisis_grok'])
-            
-            # Pregunta Original
-            elements.append(Paragraph(
-                "Pregunta Original:",
-                self.styles['SubTitle']
-            ))
-            elements.append(Paragraph(
-                self._format_text(row['pregunta_original']),
-                self.styles['CustomNormal']
-            ))
-
-            # Justificación Original
-            elements.append(Paragraph(
-                "Justificación Original:",
-                self.styles['SubTitle']
-            ))
-            elements.append(Paragraph(
-                self._format_text(row['justificacion_original']),
-                self.styles['CustomNormal']
-            ))
-
-            # Evaluación
-            elements.append(Paragraph(
-                "Evaluación:",
-                self.styles['SubTitle']
-            ))
-            
-            eval_data = [[k.capitalize(), f"{v}/10"] for k, v in analysis['evaluacion'].items()]
-            eval_table = Table(eval_data, colWidths=[200, 100])
-            eval_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, -1), colors.lightgrey),
-                ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
-                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, -1), 10),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
-                ('TOPPADDING', (0, 0), (-1, -1), 12),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black)
-            ]))
-            elements.append(eval_table)
-            elements.append(Spacer(1, 10))
-
-            # Justificación Mejorada
-            elements.append(Paragraph(
-                "Justificación Mejorada:",
-                self.styles['SubTitle']
-            ))
-            elements.append(Paragraph(
-                self._format_text(analysis['justificacion_mejorada']),
-                self.styles['CustomNormal']
-            ))
-
-            # Ejemplos Relevantes
-            if analysis['ejemplos_relevantes']:
-                elements.append(Paragraph(
-                    "Ejemplos Relevantes:",
-                    self.styles['SubTitle']
-                ))
-                for i, ejemplo in enumerate(analysis['ejemplos_relevantes'], 1):
-                    elements.append(Paragraph(
-                        f"{i}. {self._format_text(ejemplo)}",
-                        self.styles['CustomNormal']
-                    ))
-
-        except Exception as e:
-            elements.append(Paragraph(
-                f"Error al procesar análisis: {str(e)}",
-                self.styles['CustomNormal']
-            ))
-
-        return elements
+        # Procesar cada pregunta
+        for _, row in results_df.iterrows():
+            try:
+                elements.extend(self.create_comparison_section(row))
+            except Exception as e:
+                print(f"Error procesando pregunta: {str(e)}")
+        
+        # Construir PDF
+        doc.build(elements, onFirstPage=HeaderCanvas(self).on_page, 
+                           onLaterPages=HeaderCanvas(self).on_page)
