@@ -15,7 +15,7 @@ SYSTEM_PROMPT = """Eres un profesor experto en educación con años de experienc
 1. Explicar conceptos paso a paso con claridad
 2. Usar ejemplos de vida cotidiana relacionables
 3. Asegurar comprensión para cualquier nivel
-4. Proporcionar ejemplos adicionales relevantes
+4. Proporcionar ejemplos adicionales relevantes de ser necesario
 5. Conectar con experiencias previas
 6. Adaptar lenguaje a la edad del estudiante
 7. Crear explicaciones memorables y significativas
@@ -30,6 +30,7 @@ Al mejorar justificaciones:
 Al mejorar las preguntas:
 - Explicación completa y objetiva sobre el concepto que se pregunta sin que pierda el sentido de la pregunta original
 - Las alternativas deben ser lo más coherentes posible con la pregunta
+- La alternativa que es correcta debe ser lo mas clara y objetivo posible, para que no se confunda con las demas alternativas y para que no haya ambiguedades
 - Mantener el nivel de dificultad apropiado
 
 Responde SIEMPRE en este formato JSON exacto:
@@ -58,7 +59,7 @@ Responde SIEMPRE en este formato JSON exacto:
 
 # Configuraciones de la aplicación
 OUTPUT_DIR = os.getenv('OUTPUT_DIR', './output')
-BATCH_SIZE = int(os.getenv('BATCH_SIZE', '15'))
+BATCH_SIZE = int(os.getenv('BATCH_SIZE', '25'))
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
 
 # Asegurar que existe el directorio de salida

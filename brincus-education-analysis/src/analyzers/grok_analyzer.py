@@ -11,7 +11,7 @@ from src.config.settings import SYSTEM_PROMPT
 class GrokEducationAnalyzer:
     def __init__(self):
         self.api_key = "xai-CpKouLyTQxr5NvuvFANHNhBMFFSh86QD6XOQzZdp3pQopI4xHuhirmel3nGP8UxdfKAcMwuLegZip6IS"
-        self.batch_size = int(os.getenv('BATCH_SIZE', '15'))
+        self.batch_size = int(os.getenv('BATCH_SIZE', '25'))
         self.url = "https://api.x.ai/v1/chat/completions"
         self.headers = {
             "Content-Type": "application/json",

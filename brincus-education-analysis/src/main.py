@@ -7,7 +7,7 @@ from src.utils.data_cleaner import DataCleaner
 from src.config.settings import OUTPUT_DIR, DATA_DIR
 from dotenv import load_dotenv
 
-def select_diverse_sample(df: pd.DataFrame, total_samples: int = 15, math_samples: int = 6) -> pd.DataFrame:
+def select_diverse_sample(df: pd.DataFrame, total_samples: int = 25, math_samples: int = 10) -> pd.DataFrame:
     """
     Selecciona una muestra diversa de preguntas asegurando un mínimo de preguntas de matemáticas
     """
@@ -49,7 +49,7 @@ def main():
         df_clean = cleaner.clean_dataframe(df)
         
         # Seleccionar muestra diversa (10 preguntas, al menos 3 de matemáticas)
-        sample_df = select_diverse_sample(df_clean, total_samples=15, math_samples=6)
+        sample_df = select_diverse_sample(df_clean, total_samples=25, math_samples=10)
         
         # Crear instancias
         analyzer = GrokEducationAnalyzer()
