@@ -40,6 +40,7 @@ Responde SIEMPRE en este formato JSON exacto:
         "B": "alternativa b mejorada",
         "C": "alternativa c mejorada",
         "D": "alternativa d mejorada"
+        "E": "alternativa e mejorada"
     },
     "respuesta_correcta": "letra de la respuesta correcta",
     "justificacion_mejorada": "explicación pedagógica detallada",
@@ -58,7 +59,7 @@ Responde SIEMPRE en este formato JSON exacto:
 
 # Configuraciones de la aplicación
 OUTPUT_DIR = os.getenv('OUTPUT_DIR', './output')
-BATCH_SIZE = int(os.getenv('BATCH_SIZE', '15'))
+BATCH_SIZE = int(os.getenv('BATCH_SIZE', '3'))
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
 
 # Asegurar que existe el directorio de salida

@@ -7,11 +7,12 @@ import pandas as pd
 from tqdm import tqdm
 from src.utils.helpers import clean_json_response
 from src.config.settings import SYSTEM_PROMPT
+from unidecode import unidecode
 
 class GrokEducationAnalyzer:
     def __init__(self):
         self.api_key = "xai-CpKouLyTQxr5NvuvFANHNhBMFFSh86QD6XOQzZdp3pQopI4xHuhirmel3nGP8UxdfKAcMwuLegZip6IS"
-        self.batch_size = int(os.getenv('BATCH_SIZE', '15'))
+        self.batch_size = int(os.getenv('BATCH_SIZE', '3'))
         self.url = "https://api.x.ai/v1/chat/completions"
         self.headers = {
             "Content-Type": "application/json",
@@ -45,6 +46,7 @@ class GrokEducationAnalyzer:
             alt_b = self._clean_json_field(row['alt_b'])
             alt_c = self._clean_json_field(row['alt_c'])
             alt_d = self._clean_json_field(row['alt_d'])
+            alt_e = self._clean_json_field(row['alt_e'])
             justificacion = self._clean_json_field(row['justificacion'])
 
             # Construir el prompt del usuario
@@ -57,6 +59,7 @@ A) {alt_a}
 B) {alt_b}
 C) {alt_c}
 D) {alt_d}
+E) {alt_e}
 RESPUESTA CORRECTA: {row['correcta']}
 JUSTIFICACIÓN ORIGINAL: {justificacion}
 
@@ -97,7 +100,8 @@ IMPORTANTE: Responde usando exactamente el formato JSON especificado."""
                             'A': alt_a,
                             'B': alt_b,
                             'C': alt_c,
-                            'D': alt_d
+                            'D': alt_d,
+                            'E': alt_e
                         },
                         'correcta': row['correcta'],
                         'justificacion_original': justificacion,
@@ -114,17 +118,63 @@ IMPORTANTE: Responde usando exactamente el formato JSON especificado."""
         except Exception as e:
             print(f"Error procesando ID {row['id']}: {str(e)}")
             return None
+    def _format_for_excel(self, original_row: pd.Series, improved_content: dict) -> dict:
+        """Formatea el contenido mejorado al formato JSON del Excel original"""
+        if 'E' not in improved_content['alternativas']:
+            improved_content['alternativas']['E'] = "No hay alternativa E"
 
-    def process_batch(self, df: pd.DataFrame) -> pd.DataFrame:
-        results = []
+        def format_json_text(text):
+            # Asegurarse de que el texto esté en la codificación correcta
+            text = text.encode('utf-8').decode('utf-8')
+            return {
+                "ops": [{"insert": f"{text}\n"}]
+            }
+
+        return {
+            'id': original_row['id'],
+            'id_video': original_row['id_video'],
+            'pregunta': json.dumps(format_json_text(improved_content['pregunta_mejorada']), 
+                                 ensure_ascii=False),
+            'alt_a': json.dumps(format_json_text(improved_content['alternativas']['A']), 
+                              ensure_ascii=False),
+            'alt_b': json.dumps(format_json_text(improved_content['alternativas']['B']), 
+                              ensure_ascii=False),
+            'alt_c': json.dumps(format_json_text(improved_content['alternativas']['C']), 
+                              ensure_ascii=False),
+            'alt_d': json.dumps(format_json_text(improved_content['alternativas']['D']), 
+                              ensure_ascii=False),
+            'alt_e': json.dumps(format_json_text(improved_content['alternativas']['E']), 
+                              ensure_ascii=False),
+            'correcta': improved_content['respuesta_correcta'],
+            'justificacion': json.dumps(format_json_text(improved_content['justificacion_mejorada']), 
+                                      ensure_ascii=False),
+            'curso': original_row['curso'].encode('utf-8').decode('utf-8'),
+            'asignatura': original_row['asignatura'],
+            'seccion': original_row['seccion'],
+            'nombrevideo': original_row['nombrevideo']
+        }
+    
+    def process_batch(self, df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+        """Procesa batch de preguntas y retorna tanto el análisis como el Excel formateado"""
+        analysis_results = []
+        excel_results = []
+        
         with tqdm(total=min(len(df), self.batch_size), desc="Procesando preguntas") as pbar:
             for i, (_, row) in enumerate(df.iterrows()):
                 if i >= self.batch_size:
                     break
+                    
                 result = self.analyze_justification(row)
                 if result:
-                    results.append(result)
+                    analysis_results.append(result)
+                    try:
+                        json_content = json.loads(result['analisis_grok'])
+                        excel_row = self._format_for_excel(row, json_content)
+                        excel_results.append(excel_row)
+                    except Exception as e:
+                        print(f"Error formateando para Excel ID {row['id']}: {str(e)}")
+                
                 time.sleep(2)
                 pbar.update(1)
         
-        return pd.DataFrame(results)
+        return pd.DataFrame(analysis_results), pd.DataFrame(excel_results)

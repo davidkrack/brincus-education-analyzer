@@ -1,13 +1,14 @@
 import os
 import pandas as pd
 import numpy as np
+import csv
 from src.analyzers.grok_analyzer import GrokEducationAnalyzer
 from src.analyzers.pdf_generator import PDFGenerator
 from src.utils.data_cleaner import DataCleaner
 from src.config.settings import OUTPUT_DIR, DATA_DIR
 from dotenv import load_dotenv
 
-def select_diverse_sample(df: pd.DataFrame, total_samples: int = 15, math_samples: int = 6) -> pd.DataFrame:
+def select_diverse_sample(df: pd.DataFrame, total_samples: int = 3, math_samples: int = 2) -> pd.DataFrame:
     """
     Selecciona una muestra diversa de preguntas asegurando un mínimo de preguntas de matemáticas
     """
@@ -38,44 +39,48 @@ def main():
     os.makedirs(DATA_DIR, exist_ok=True)
     
     try:
-        # Cargar datos originales
+        # Cargar datos
         data_path = os.path.join(DATA_DIR, 'Preguntas_ruta_aprendizaje.csv')
-        if not os.path.exists(data_path):
-            raise FileNotFoundError(f"Archivo de datos no encontrado en: {data_path}")
-            
-        # Cargar y limpiar datos
-        df = pd.read_csv(data_path, sep=';')
-        cleaner = DataCleaner()
-        df_clean = cleaner.clean_dataframe(df)
+        df = pd.read_csv(data_path, sep=';', encoding='utf-8')
         
-        # Seleccionar muestra diversa (10 preguntas, al menos 3 de matemáticas)
-        sample_df = select_diverse_sample(df_clean, total_samples=15, math_samples=6)
-        
-        # Crear instancias
+        # Procesar preguntas
         analyzer = GrokEducationAnalyzer()
-        pdf_generator = PDFGenerator()
+        analysis_results, excel_results = analyzer.process_batch(df)
         
-        # Procesar batch de preguntas
-        results = analyzer.process_batch(sample_df)
+        # Guardar resultados de análisis
+        if not analysis_results.empty:
+            analysis_results.to_csv(os.path.join(OUTPUT_DIR, 'grok_education_analysis.csv'), 
+                                 index=False)
+            
+            # Generar PDF
+            pdf_generator = PDFGenerator()
+            pdf_generator.generate_report(analysis_results, 
+                                       os.path.join(OUTPUT_DIR, 'analisis_educativo.pdf'))
         
-        # Guardar resultados CSV
-        csv_path = os.path.join(OUTPUT_DIR, 'grok_education_analysis.csv')
-        results.to_csv(csv_path, index=False)
-        print("\nRevisión de resultados:")
-        for _, row in results.iterrows():
-            print("\nID:", row.get('id'))
-            print("Contenido del análisis:", row.get('analisis_grok', 'No disponible'))
-        # Generar PDF
-        pdf_path = os.path.join(OUTPUT_DIR, 'analisis_educativo.pdf')
-        pdf_generator.generate_report(results, pdf_path)
+        # Guardar resultados en formato Excel
+        if not excel_results.empty:
+            # Guardar en CSV con la codificación correcta
+            output_path = os.path.join(OUTPUT_DIR, 'preguntas_mejoradas.csv')
+            excel_results.to_csv(output_path, 
+                               index=False, 
+                               sep=';',
+                               encoding='utf-8',
+                               quoting=csv.QUOTE_ALL)  # Esto asegura que los JSON se guarden correctamente
+            
+            # También guardar en Excel para verificar
+            excel_path = os.path.join(OUTPUT_DIR, 'preguntas_mejoradas.xlsx')
+            excel_results.to_excel(excel_path, 
+                                 index=False, 
+                                 engine='openpyxl')
         
-        print(f"\nAnálisis completado. Resultados guardados en:")
-        print(f"- CSV análisis: {csv_path}")
-        print(f"- PDF reporte: {pdf_path}")
+        print("\nAnálisis completado. Archivos generados:")
+        print(f"- CSV análisis: {os.path.join(OUTPUT_DIR, 'grok_education_analysis.csv')}")
+        print(f"- Excel formato original: {os.path.join(OUTPUT_DIR, 'preguntas_mejoradas.csv')}")
+        print(f"- PDF reporte: {os.path.join(OUTPUT_DIR, 'analisis_educativo.pdf')}")
         
     except Exception as e:
         print(f"Error en el proceso: {str(e)}")
-        raise
+        raise e  # Para ver el traceback completo
 
 if __name__ == "__main__":
     main()
