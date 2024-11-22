@@ -6,8 +6,10 @@ import requests
 import pandas as pd
 from tqdm import tqdm
 from src.utils.helpers import clean_json_response
-from src.config.settings import SYSTEM_PROMPT
+from src.config.settings import SYSTEM_PROMPT, OUTPUT_DIR
 from unidecode import unidecode
+import csv
+
 
 class GrokEducationAnalyzer:
     def __init__(self):
@@ -154,27 +156,68 @@ IMPORTANTE: Responde usando exactamente el formato JSON especificado."""
             'nombrevideo': original_row['nombrevideo']
         }
     
-    def process_batch(self, df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
-        """Procesa batch de preguntas y retorna tanto el análisis como el Excel formateado"""
+    def process_batch(self, df: pd.DataFrame, batch_size: int = 50) -> tuple[pd.DataFrame, pd.DataFrame]:
+        df_7mo = df[df['curso'] == '7° Básico'].copy()
+        total_preguntas = len(df_7mo)
+        all_excel_results = []
         analysis_results = []
-        excel_results = []
         
-        with tqdm(total=min(len(df), self.batch_size), desc="Procesando preguntas") as pbar:
-            for i, (_, row) in enumerate(df.iterrows()):
-                if i >= self.batch_size:
-                    break
-                    
-                result = self.analyze_justification(row)
-                if result:
-                    analysis_results.append(result)
-                    try:
-                        json_content = json.loads(result['analisis_grok'])
-                        excel_row = self._format_for_excel(row, json_content)
-                        excel_results.append(excel_row)
-                    except Exception as e:
-                        print(f"Error formateando para Excel ID {row['id']}: {str(e)}")
-                
-                time.sleep(2)
-                pbar.update(1)
+        print(f"Total de preguntas de 7° Básico: {total_preguntas}")
         
-        return pd.DataFrame(analysis_results), pd.DataFrame(excel_results)
+        # Cargar resultados previos si existen
+        output_file = os.path.join(OUTPUT_DIR, 'preguntas_mejoradas_7mo_acumulado.csv')
+        if os.path.exists(output_file):
+            existing_results = pd.read_csv(output_file, sep=';', encoding='utf-8')
+            processed_ids = set(existing_results['id'])
+            all_excel_results = existing_results.to_dict('records')
+            print(f"Cargadas {len(all_excel_results)} preguntas procesadas previamente")
+        else:
+            processed_ids = set()
+
+        # Filtrar preguntas no procesadas
+        df_7mo = df_7mo[~df_7mo['id'].isin(processed_ids)]
+        
+        for start_idx in range(0, len(df_7mo), batch_size):
+            end_idx = min(start_idx + batch_size, len(df_7mo))
+            batch_df = df_7mo.iloc[start_idx:end_idx]
+            
+            with tqdm(total=len(batch_df), desc=f"Procesando lote {start_idx//batch_size + 1}") as pbar:
+                for _, row in batch_df.iterrows():
+                    result = self.analyze_justification(row)
+                    if result:
+                        analysis_results.append(result)
+                        try:
+                            json_content = json.loads(result['analisis_grok'])
+                            json_content = self._preserve_correct_answer(json_content, row['correcta'])
+                            excel_row = self._format_for_excel(row, json_content)
+                            all_excel_results.append(excel_row)
+                        except Exception as e:
+                            print(f"Error formateando para Excel ID {row['id']}: {str(e)}")
+                    time.sleep(2)
+                    pbar.update(1)
+            
+            # Guardar progreso acumulado
+            pd.DataFrame(all_excel_results).to_csv(
+                output_file,
+                index=False, 
+                sep=';',
+                encoding='utf-8',
+                quoting=csv.QUOTE_ALL
+            )
+            print(f"Guardadas {len(all_excel_results)} preguntas acumuladas")
+        
+        return pd.DataFrame(analysis_results[-20:]), pd.DataFrame(all_excel_results)
+
+    def _preserve_correct_answer(self, content: dict, original_correct: str) -> dict:
+        """Asegura que la respuesta correcta mantiene la misma letra que la original"""
+        if content['respuesta_correcta'] != original_correct:
+            # Obtener alternativa correcta actual
+            correct_text = content['alternativas'][content['respuesta_correcta']]
+            # Obtener alternativa en la posición original
+            target_text = content['alternativas'][original_correct]
+            # Intercambiar alternativas
+            content['alternativas'][content['respuesta_correcta']] = target_text
+            content['alternativas'][original_correct] = correct_text
+            # Actualizar letra correcta
+            content['respuesta_correcta'] = original_correct
+        return content
