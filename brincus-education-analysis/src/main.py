@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import numpy as np
 import csv
-from src.analyzers.grok_analyzer import GrokEducationAnalyzer
+from src.analyzers.grok_analyzer import GPTEducationAnalyzer
 from src.analyzers.pdf_generator import PDFGenerator
 from src.utils.data_cleaner import DataCleaner
 from src.config.settings import OUTPUT_DIR, DATA_DIR
@@ -19,10 +19,24 @@ def main():
     try:
         # Cargar datos
         data_path = os.path.join(DATA_DIR, 'Preguntas_ruta_aprendizaje.csv')
-        df = pd.read_csv(data_path, sep=';', encoding='utf-8')
+        
+        # Debug prints
+        print("\n=== DEBUG INFO ===")
+        print(f"Ruta del archivo: {data_path}")
+        print(f"¿Existe el archivo?: {os.path.exists(data_path)}")
+        print("==================\n")
+        
+        # Intentar cargar el CSV
+        df = pd.read_csv(data_path, sep=';', encoding='utf-8', on_bad_lines='skip')
+        
+        # Debug prints post-carga
+        print("\n=== DATAFRAME INFO ===")
+        print(f"Filas en DataFrame: {len(df)}")
+        print(f"Columnas: {df.columns.tolist()}")
+        print("=====================\n")
         
         # Procesar preguntas
-        analyzer = GrokEducationAnalyzer()
+        analyzer = GPTEducationAnalyzer()
         analysis_results, excel_results = analyzer.process_batch(df)
         
         # Guardar resultados de análisis y generar PDF (solo últimas 20 preguntas)

@@ -24,6 +24,7 @@ wheels/
 # Virtual Environment
 venv/
 ENV/
+.env
 
 # IDEs
 .idea/
@@ -33,10 +34,13 @@ ENV/
 
 # Project specific
 output/
+data/
 *.csv
+*.xlsx
 *.pdf
-.env
+*.log
 
 # Exceptions
 !requirements.txt
-!sample_data/*.csv
+!data/sample/*.csv
+!templates/**/*.csv
