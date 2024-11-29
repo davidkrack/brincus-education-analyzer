@@ -111,35 +111,46 @@ class GPTEducationAnalyzer:
 
 
     def _format_for_excel(self, original_row: pd.Series, improved_content: dict) -> dict:
-        """Formatea el contenido para Excel, manteniendo LaTeX dentro del JSON."""
-        def format_json_text(text, is_math=False):
-            if is_math and any(char in text for char in "+-*/^_{}\\$"):
-                # Si es una expresión matemática, asegurarse de que esté en formato LaTeX
-                text = text.replace('$$', '$').replace('\\dfrac', '\\frac')
-                if not text.startswith('$'):
-                    text = f"${text}$"
-            return {
-                "ops": [{"insert": text + "\n"}]
-            }
+        """Formatea el contenido para Excel, manteniendo el formato JSON correcto para fórmulas."""
+        def format_json_text(text):
+            # Separar el texto en partes: texto normal y fórmulas
+            parts = []
+            # Si hay una fórmula matemática (contenido entre $...$)
+            if '$' in text:
+                # Dividir el texto en partes
+                text_parts = text.split('$')
+                for i, part in enumerate(text_parts):
+                    if i % 2 == 0:  # Texto normal
+                        if part.strip():
+                            parts.append({"insert": part})
+                    else:  # Fórmula matemática
+                        if part.strip():
+                            parts.append({
+                                "insert": {
+                                    "formula": part.strip().replace('\\frac', '\\dfrac')
+                                }
+                            })
+            else:
+                # Si no hay fórmulas, solo texto normal
+                parts.append({"insert": text})
+            
+            # Agregar el salto de línea al final
+            parts.append({"insert": "\n"})
+            
+            return {"ops": parts}
 
         if 'E' not in improved_content['alternativas']:
             improved_content['alternativas']['E'] = "No hay alternativa E"
-
-        def clean_latex(text):
-            """Limpia y formatea expresiones LaTeX."""
-            if text.startswith('$') and text.endswith('$'):
-                return text
-            return text.replace('\\dfrac', '\\frac')
 
         return {
             'id': original_row['id'],
             'id_video': original_row['id_video'],
             'pregunta': json.dumps(format_json_text(improved_content['pregunta_mejorada']), ensure_ascii=False),
-            'alt_a': json.dumps(format_json_text(clean_latex(improved_content['alternativas']['A']), True), ensure_ascii=False),
-            'alt_b': json.dumps(format_json_text(clean_latex(improved_content['alternativas']['B']), True), ensure_ascii=False),
-            'alt_c': json.dumps(format_json_text(clean_latex(improved_content['alternativas']['C']), True), ensure_ascii=False),
-            'alt_d': json.dumps(format_json_text(clean_latex(improved_content['alternativas']['D']), True), ensure_ascii=False),
-            'alt_e': json.dumps(format_json_text(clean_latex(improved_content['alternativas']['E']), True), ensure_ascii=False),
+            'alt_a': json.dumps(format_json_text(improved_content['alternativas']['A']), ensure_ascii=False),
+            'alt_b': json.dumps(format_json_text(improved_content['alternativas']['B']), ensure_ascii=False),
+            'alt_c': json.dumps(format_json_text(improved_content['alternativas']['C']), ensure_ascii=False),
+            'alt_d': json.dumps(format_json_text(improved_content['alternativas']['D']), ensure_ascii=False),
+            'alt_e': json.dumps(format_json_text(improved_content['alternativas']['E']), ensure_ascii=False),
             'correcta': improved_content['respuesta_correcta'],
             'justificacion': json.dumps(format_json_text(improved_content['justificacion_mejorada']), ensure_ascii=False),
             'curso': original_row['curso'].encode('utf-8').decode('utf-8'),
@@ -151,9 +162,9 @@ class GPTEducationAnalyzer:
     def process_batch(self, df: pd.DataFrame, batch_size: int = 50) -> tuple[pd.DataFrame, pd.DataFrame]:
         # Filtrar por 7° Básico y matemáticas, tomar las primeras 25
         df_filtered = df[
-            (df['curso'] == '7° Básico') & 
+            (df['curso'] == 'III Medio') & 
             (df['asignatura'].str.lower().str.contains('matemática|matematica'))
-        ].head(20).copy()
+        ].head(10).copy()
         
         total_preguntas = len(df_filtered)
         all_excel_results = []
